@@ -1,0 +1,89 @@
+---
+title: "Packet 7 - Comparing Two Proportions"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+  encoding=encoding,
+  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+author: "Todd CadwalladerOlsker"
+date: "*Last updated:* `r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    downcute_theme: "chaos"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(rmdformats)
+library(openintro)
+library(tidyverse)
+library(gghighlight)
+library(formatR)
+knitr::opts_chunk$set(echo = T, cache = T, eval = T, cache.lazy = F, warning = F)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=F)
+options(scipen = 999)
+```
+
+## Two-proportion hypothesis tests
+
+Let's begin by creating a substantial subset of the GSS data:
+
+```{r create gss}
+library(gssr)
+
+num_vars <- c("age", "hompop", "hrs1")
+cat_vars <- c("sex", "degree", "partyid", "class", "finrela")
+my_vars <- c(num_vars, cat_vars)
+
+gss18 <- gss_get_yr(2018)
+gss18 <- gss18 %>% 
+  select(all_of(my_vars)) %>% 
+  mutate(
+    # Convert all missing to NA
+    across(everything(), haven::zap_missing),
+    # Make all categorical variables factors and relabel nicely
+    across(all_of(cat_vars), forcats::as_factor)
+    )
+
+# Now, recode "degree" to a binary variable, "college"
+
+gss18 <- gss18 %>% 
+  mutate(
+    college = recode(degree,
+                   "lt high school" = "no degree",
+                   "high school" = "no degree",
+                   "junior college" = "degree",
+                   "bachelor" = "degree",
+                   "graduate" = "degree"
+    )
+  )
+
+# and recode "partyid" to a simpler "party":
+
+gss18 <- gss18 %>% 
+  mutate(
+    party = recode(partyid,
+                   "strong democrat" = "DEM",
+                   "not str democrat" = "DEM",
+                   "ind,near dem" = "IND",
+                   "independent" = "IND",
+                   "ind,near rep" = "IND",
+                   "not str republican" = "REP",
+                   "strong republican" = "REP",
+                   "other party" = "OTH"
+                   )
+  )
+
+```
+
+
+## Ivermetin Study
+
+https://www.cidrap.umn.edu/news-perspective/2022/03/ivermectin-doesnt-prevent-covid-hospital-cases-large-study-finds
+
+## Fluvoxamine Study
+
+https://www.wired.com/story/better-data-on-ivermectin-is-finally-on-its-way/
+
+(Also includes another ivermectin study)
