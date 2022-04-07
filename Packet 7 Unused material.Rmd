@@ -1,0 +1,49 @@
+Let's begin by creating a substantial subset of the GSS data:
+
+```{r create gss}
+library(gssr)
+
+num_vars <- c("age", "hompop", "hrs1")
+cat_vars <- c("sex", "degree", "partyid", "class", "finrela")
+my_vars <- c(num_vars, cat_vars)
+
+gss18 <- gss_get_yr(2018)
+gss18 <- gss18 %>% 
+  select(all_of(my_vars)) %>% 
+  mutate(
+    # Convert all missing to NA
+    across(everything(), haven::zap_missing),
+    # Make all categorical variables factors and relabel nicely
+    across(all_of(cat_vars), forcats::as_factor)
+    )
+
+# Now, recode "degree" to a binary variable, "college"
+
+gss18 <- gss18 %>% 
+  mutate(
+    college = recode(degree,
+                   "lt high school" = "no degree",
+                   "high school" = "no degree",
+                   "junior college" = "degree",
+                   "bachelor" = "degree",
+                   "graduate" = "degree"
+    )
+  )
+
+# and recode "partyid" to a simpler "party":
+
+gss18 <- gss18 %>% 
+  mutate(
+    party = recode(partyid,
+                   "strong democrat" = "DEM",
+                   "not str democrat" = "DEM",
+                   "ind,near dem" = "IND",
+                   "independent" = "IND",
+                   "ind,near rep" = "IND",
+                   "not str republican" = "REP",
+                   "strong republican" = "REP",
+                   "other party" = "OTH"
+                   )
+  )
+
+```

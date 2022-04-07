@@ -21,7 +21,7 @@ iver_props <- iver_study %>% prop.table(1)
 iver_diff_prop <- 
   iver_props["ivermectin","event"] - iver_props["placebo","event"]
 
-iver_study %>% prop.test(alternative = "less", correct = F)
+iver_study %>% prop.test(alternative = "two.sided", correct = F)
 
 iver_groups <- c(rep("ivermectin", num_iver), 
                       rep("placebo", num_iplacebo))
@@ -38,6 +38,10 @@ iver_data_shuffled <- iver_data %>%
   mutate(results = sample(results))
 
 iver_data_shuffled %>% table() %>% addmargins()
+iver_data_shuffled %>% table() %>% prop.table(1)
+
+test <- iver_data_shuffled %>% table() %>% prop.table(1)
+test["ivermectin","event"] - test["placebo","event"]
 
 ### A randomization test
 
@@ -69,13 +73,14 @@ for(i in 1:simulations){
     mutate(results = sample(results))
   sim_props <- sim_data_shuffle %>% table() %>% prop.table(1)
   sim_diff_prop[i] <- 
-    sim_props["ivermectin","event"] - iver_props["placebo","event"]
+    sim_props["ivermectin","event"] - sim_props["placebo","event"]
 }
 
 sim_dist <- data.frame(sim_diff_prop)
 
 sims_as_extreme <- sim_dist %>% 
-  filter(sim_diff_prop <= iver_diff_prop) %>% 
+  filter(sim_diff_prop <= -abs(iver_diff_prop) |
+           sim_diff_prop >= abs(iver_diff_prop)) %>% 
   nrow()
 sims_as_extreme
 p_val <- sims_as_extreme/simulations
@@ -84,7 +89,9 @@ p_val
 sim_dist %>% ggplot(aes(x = sim_diff_prop)) +
   geom_bar(color = "black", fill = "forestgreen") +
   scale_x_continuous() +
-  gghighlight(sim_diff_prop <= iver_diff_prop,
+  gghighlight(sim_diff_prop <= -abs(iver_diff_prop) |
+                sim_diff_prop >= abs(iver_diff_prop)
+              ,
               unhighlighted_params = list(
                 fill = "forestgreen",
                 alpha = 0.25))

@@ -20,70 +20,286 @@ library(openintro)
 library(tidyverse)
 library(gghighlight)
 library(formatR)
-knitr::opts_chunk$set(echo = T, cache = T, eval = T, cache.lazy = F, warning = F)
+library(infer)
+knitr::opts_chunk$set(echo = T, 
+                      cache = T, 
+                      eval = T, 
+                      cache.lazy = F, 
+                      warning = F)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=F)
 options(scipen = 999)
 ```
 
 ## Two-proportion hypothesis tests
 
-Let's begin by creating a substantial subset of the GSS data:
+A recent study investigated whether or not ivermectin (an anti-parasitic used in animal care) could be used to treat Covid-19. In order to investigate this, researchers randomly assigned patients who had recently contracted Covid-19 to either a treatment group or a placebo group. Then, researchers recorded the number of patients in each group that had a "hospitalization event", meaning the patient either was hospitalized or spent an extended amount of time in an emergency department.
 
-```{r create gss}
-library(gssr)
+Read more about the study here:
+https://www.cidrap.umn.edu/news-perspective/2022/03/ivermectin-doesnt-prevent-covid-hospital-cases-large-study-finds
 
-num_vars <- c("age", "hompop", "hrs1")
-cat_vars <- c("sex", "degree", "partyid", "class", "finrela")
-my_vars <- c(num_vars, cat_vars)
+The main result is the following:
 
-gss18 <- gss_get_yr(2018)
-gss18 <- gss18 %>% 
-  select(all_of(my_vars)) %>% 
-  mutate(
-    # Convert all missing to NA
-    across(everything(), haven::zap_missing),
-    # Make all categorical variables factors and relabel nicely
-    across(all_of(cat_vars), forcats::as_factor)
-    )
+```{r ivermectin data}
+num_iver <- 679
+event_iver <- 100
+num_iplacebo <- 679
+event_iplacebo <- 111
 
-# Now, recode "degree" to a binary variable, "college"
+iver_study <- matrix(c(event_iver, num_iver - event_iver, 
+                       event_iplacebo, num_iplacebo - event_iplacebo),
+                     ncol=2, byrow=TRUE)
+colnames(iver_study) <- c("event", "no event")
+rownames(iver_study) <- c("ivermectin", "placebo")
+iver_study <- as.table(iver_study)
 
-gss18 <- gss18 %>% 
-  mutate(
-    college = recode(degree,
-                   "lt high school" = "no degree",
-                   "high school" = "no degree",
-                   "junior college" = "degree",
-                   "bachelor" = "degree",
-                   "graduate" = "degree"
-    )
+iver_study_margins <- iver_study %>% addmargins(2)
+iver_study_margins
+iver_props <- iver_study %>% prop.table(1) %>% addmargins(2)
+iver_props
+```
+
+In the study, the proportion of events in the ivermectin group was slightly lower (14.7%) than that of the placebo group (16.3). However, does that allow us to infer that the proportion of events would be lower in the *population* of Covid-19 patients? Or is this likely due to chance, when the patients were randomly assigned to groups?
+
+## Using a theoretical distribution
+
+First, we need a statistic to summarize the information we have in a single value. The most natural is the *difference in the proportions*, $\hat{p_1} - \hat{p_2}$. 
+
+The standard error for this statistic is given by 
+\[\sqrt{\frac{\hat{p_1}(1-\hat{p_1})}{n_1}+\frac{\hat{p_2}(1-\hat{p_2})}{n_2}}\]
+
+We can conduct a hypothesis test, with the null hypothesis that $p_1 - p_2 = 0$ -- that is, there is no difference between the two populations. Our alternative hypothesis is one of:
+\begin{align}
+p_1 - p_2 &\ne 0 \\
+p_1 - p_2 &> 0 \\
+p_1 - p_2 &< 0 \\
+\end{align}
+
+For the ivermectin data we have, either the first or third option would make sense, since in the samples we have, the proportion of events is slightly lower in the first (ivermectin) group than in the second (placebo) group. Let's run a two-tailed test, using the standard error formula to compute a z-score:
+
+```{r by hand z score}
+iver_props <- iver_study %>% prop.table(1) %>% addmargins(2)
+p_hat_1 <- iver_props["ivermectin","event"]
+p_hat_2 <- iver_props["placebo","event"]
+n_1 <- iver_study_margins["ivermectin","Sum"]
+n_2 <- iver_study_margins["placebo","Sum"]
+null_prop <- 0
+
+diff_props <- p_hat_1 - p_hat_2
+se <- sqrt((p_hat_1 * (1 - p_hat_1)/n_1) + (p_hat_2 * (1 - p_hat_2)/n_2))
+z <- (diff_props - null_prop)/se
+
+pnorm(-abs(z),0,1)+(1-pnorm(abs(z),0,1))
+normTail(L = -abs(z), U = abs(z))
+```
+
+We can use the same built-in R function, `prop.test`, to compare the proportions of two groups.
+
+```{r prop.test}
+iver_study
+prop.test(iver_study, correct = F)
+```
+
+The `prop.test` function also gives us a confidence interval, which we can  calculate by hand:
+
+```{r conf int by hand}
+lower_bound <- diff_props - 1.96 * se
+upper_bound <- diff_props + 1.96 * se
+c(lower_bound, upper_bound)
+```
+
+## Randomization-based hypothesis test and bootstrap confidence interval
+
+To test against the null hypothesis of $p_1 - p_2 = 0$, we want to create a null distribution under the assumption that there really is no difference between the groups. In our ivermectin study, the null hypothesis is that each person with an "event" should be equally likely to be in the placebo group as they are in the treatment group (weighted by the size of each group, but in our example, the groups are the same size). 
+
+Let's use our table to create a data set:
+
+```{r iver dataset}
+iver_groups <- c(rep("ivermectin", num_iver), 
+                      rep("placebo", num_iplacebo))
+iver_results <- c(rep("event", event_iver),
+                  rep("no event", num_iver - event_iver),
+                  rep("event", event_iplacebo),
+                  rep("no event", num_iplacebo - event_iplacebo))
+iver_data <- data.frame("groups" = iver_groups,
+                        "results" = iver_results)
+```
+
+Inspect the `iver_data` object before continuing. Also try running `iver_data %>% table() %>% addmargins()`.
+
+Now, if each person is equally likely to be in the placebo group as in the treatment group (as in the null hypothesis), we can simulate a new sample by *shuffling* one of the two columns of `iver_data`. 
+
+```{r iver shuffle}
+iver_data_shuffled <- iver_data %>% 
+  mutate(results = sample(results))
+
+iver_data_shuffled %>% table() %>% addmargins()
+iver_data_shuffled %>% table() %>% prop.table(1) %>% addmargins(2)
+
+```
+
+If we do this 10000 times, we will get a good idea of how likely it is that we get a result at least as extreme as our observed $\hat{p_1}-\hat{p_2}$ under the assumption of the null hypothesis:
+
+```{r rando by hand}
+iver_diff_prop <- 
+  iver_props["ivermectin","event"] - iver_props["placebo","event"]
+
+simulations <- 10000
+
+sim_diff_prop <- numeric(simulations)
+
+for(i in 1:simulations){
+  sim_data_shuffle <- iver_data %>% 
+    mutate(results = sample(results))
+  sim_props <- sim_data_shuffle %>% table() %>% prop.table(1)
+  sim_diff_prop[i] <- 
+    sim_props["ivermectin","event"] - sim_props["placebo","event"]
+}
+
+sim_dist <- data.frame(sim_diff_prop)
+
+# Find the number of simulations at least as extreme
+# as the test statistic, and calculate p-value.
+
+sims_as_extreme <- sim_dist %>% 
+  filter(sim_diff_prop <= -abs(iver_diff_prop) |
+           sim_diff_prop >= abs(iver_diff_prop)) %>% 
+  nrow()
+sims_as_extreme
+p_val <- sims_as_extreme/simulations
+p_val
+
+# Visualize the null distribution with our test statistic
+
+sim_dist %>% ggplot(aes(x = sim_diff_prop)) +
+  geom_bar(color = "black", fill = "forestgreen") +
+  scale_x_continuous() +
+  gghighlight(sim_diff_prop <= -abs(iver_diff_prop) |
+                sim_diff_prop >= abs(iver_diff_prop)
+              ,
+              unhighlighted_params = list(
+                fill = "forestgreen",
+                alpha = 0.25)) +
+  labs(
+    x = "Simulated difference in proportions",
+    y = "Number of simulations"
   )
+```
 
-# and recode "partyid" to a simpler "party":
+Alternatively, we can use the `infer` package:
 
-gss18 <- gss18 %>% 
-  mutate(
-    party = recode(partyid,
-                   "strong democrat" = "DEM",
-                   "not str democrat" = "DEM",
-                   "ind,near dem" = "IND",
-                   "independent" = "IND",
-                   "ind,near rep" = "IND",
-                   "not str republican" = "REP",
-                   "strong republican" = "REP",
-                   "other party" = "OTH"
-                   )
+```{r infer hypo test}
+# Calculate the test statistic
+
+infer_diff_prop <- iver_data %>%
+  specify(results ~ groups, success = "event") %>%
+  calculate(stat = "diff in props")
+infer_diff_prop
+
+# create a null distribution
+
+null_dist <- iver_data %>%
+  specify(results ~ groups, success = "event") %>%
+  hypothesize(null = "independence") %>% 
+  generate(reps = 10000, type = "permute") %>% 
+  calculate(stat = "diff in props")
+
+# Identify the number of values at least as extreme in the null dist
+# as our test statistic, and calculate a p-value
+
+null_dist %>%
+  get_p_value(obs_stat = infer_diff_prop, direction = "two-sided")
+```
+
+We can get a confidence interval by using the bootstrap:
+
+```{r boot iver}
+simulations <- 10000
+slice_diff_prop <- numeric(simulations)
+
+for(i in 1:simulations){
+  sim_data_slice <- iver_data %>% 
+    slice_sample(n = nrow(.), replace = T)
+  slice_props <- sim_data_slice %>% table() %>% prop.table(1)
+  slice_diff_prop[i] <- 
+    slice_props["ivermectin","event"] - slice_props["placebo","event"]
+}
+
+boot_dist <- data.frame("diff_prop" = slice_diff_prop)
+
+quantile(boot_dist$diff_prop, probs = c(0.025, 0.975))
+lower_bound <- quantile(boot_dist$diff_prop, probs = c(0.025, 0.975))["2.5%"]
+upper_bound <- quantile(boot_dist$diff_prop, probs = c(0.025, 0.975))["97.5%"]
+
+boot_dist %>% ggplot(aes(x = diff_prop)) +
+  geom_histogram(binwidth = 1/nrow(iver_data),  
+           color = "black", 
+           fill = "forestgreen") +
+  gghighlight(upper_bound >= diff_prop &
+              lower_bound <= diff_prop,
+              unhighlighted_params = list(
+                color = "grey",
+                fill = "forestgreen", 
+                alpha = 0.25)) +
+  labs(
+    title = paste(simulations, "bootstrap simulations of the difference in proportion of events between ivermectin and placebo"),
+    x = "Difference in Proportions",
+    y = "Number of Simulations"
   )
 
 ```
 
+Using `infer`:
 
-## Ivermetin Study
+```{r boot infer}
+infer_diff_prop <- iver_data %>%
+  specify(results ~ groups, success = "event") %>%
+  calculate(stat = "diff in props")
 
-https://www.cidrap.umn.edu/news-perspective/2022/03/ivermectin-doesnt-prevent-covid-hospital-cases-large-study-finds
+# create a bootstrap distribution
 
-## Fluvoxamine Study
+boot_dist <- iver_data %>%
+  specify(results ~ groups, success = "event") %>%
+  generate(reps = 10000, type = "bootstrap") %>% 
+  calculate(stat = "diff in props")
+
+# Calculate the upper and lower bounds of the confidence interval
+
+percentile_ci <- get_ci(boot_dist)
+percentile_ci
+
+# A vizualization:
+
+boot_dist %>% 
+  visualize(bins = 100) +
+  shade_confidence_interval(endpoints = percentile_ci)
+```
+
+
+## In class activity: Fluvoxamine Study
+
+Another study found that fluvoxamine, an anti-depressant medication, may have some effect in treating Covid-19:
 
 https://www.wired.com/story/better-data-on-ivermectin-is-finally-on-its-way/
 
-(Also includes another ivermectin study)
+In this study, 77 of 739 patients taking fluvoxamine had a hospitalization event, while 109 of 733 patients in the placebo group had an event.
+
+```{r fluvox numbers}
+num_fluvox <- 739
+event_fluvox <- 77
+num_fplacebo <- 733
+event_fplacebo <- 109
+```
+
+Using similar code to the ivermectin study, find:
+
+1. The difference in the proportions of events in the groups
+2. The standard error of the difference, as calculated by the formula
+3. The p-value of the difference in a hypothesis test with null hypothesis $p_1 - p_2 = 0$, and alternative $p_1 - p_2 < 0$ (a one-sided test, this time.)
+4. The 99% confidence interval calculated using the standard error (and the multiple of the SE you found in Packet 6.)
+5. Re-do part 3 with a randomization (permutation) test.
+6. Re-do part 4 with a bootstrap.
+
+## The $\chi^2$ statistic
+
+
+
