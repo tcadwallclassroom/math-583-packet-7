@@ -46,4 +46,14 @@ gss18 <- gss18 %>%
                    )
   )
 
+
+table(gss18$degree, gss18$party)
+table(gss18$degree, gss18$party) %>% addmargins() 
+table(gss18$degree, gss18$party) %>% addmargins(2) %>% prop.table(2)
+fisher.test(gss18$college, gss18$party)
+
+
 ```
+
+
+

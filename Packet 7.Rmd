@@ -299,7 +299,40 @@ Using similar code to the ivermectin study, find:
 5. Re-do part 3 with a randomization (permutation) test.
 6. Re-do part 4 with a bootstrap.
 
-## The $\chi^2$ statistic
+## The hypergeometric exact test
+
+When looking at a single proportion, we could use the *binomial* distribution to find the exact probability of finding a result as extreme (or more extreme) than our test statistic.
+
+With two proportions, we can do something similar with the *hypergeometric* distribution. In the ivermectin example, we take the perspective that we have exactly 211 hospitalization events in the 1358 patients, of which 679 have been assigned to ivermectin and 679 a placebo. If the 211 events are "randomly" distributed, with equal probability, mong the patients, the probability that exactly 100 of them are ivermectin patients and exactly 111 of them are placebo patents is
+
+\[\frac{\binom{679}{100} \cdot \binom{679}{111}}{\binom{1358}{211}} \]
+
+A result "more extreme" than our data would have fewer events in the ivermectin group, and more in the placebo group. Keeping the total number of events constant, the probabilities of all these events sum up to:
+
+\[\frac{\binom{679}{100} \cdot \binom{679}{111}}{\binom{1358}{211}}
+  + \frac{\binom{679}{99} \cdot \binom{679}{112}}{\binom{1358}{211}}
+  + \cdots + 
+  \frac{\binom{679}{0} \cdot \binom{679}{211}}{\binom{1358}{211}}\]
+
+We can calculate this in R as:
+```{r exact}
+sum(choose(679,111+(0:100))*choose(679,100-(0:100))/choose(1358,211))
+```
+
+This is a one-tailed p-value, to get the two tailed p-value, we can simply multiply by 2:
+```{r exact2}
+sum(choose(679,111+(0:100))*choose(679,100-(0:100))/choose(1358,211))*2
+```
+
+This is implemented in R as `fisher.test()`:
+```{r fisher test}
+fisher.test(iver_study, alternative = "two.sided")
+fisher.test(iver_study, alternative = "two.sided")$p
+```
+
+## To Turn In
+
+You will turn in the results of the fluvoxamine study above, written in such a way as to present the results to someone not in this class. That is, you should present the study with null and alternative hypotheses, the data that was collected, the statistic and p-value, and whether or not we reject the null hypothesis. You should calculate the p-value with a z-score, a second time with a randomization test, and finally, a third time using the hypergeometric exact test. In each case, the observed data is the same, we are only changing how we calculate the p-value.
 
 
 

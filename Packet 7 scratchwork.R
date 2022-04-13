@@ -1,4 +1,24 @@
 
+
+## From Packet 6: If two CI's overlap, the difference can still be significant
+
+num_iver <- 679
+event_iver <- 84
+num_iplacebo <- 679
+event_iplacebo <- 111
+
+iver_study <- matrix(c(event_iver, num_iver - event_iver, 
+                       event_iplacebo, num_iplacebo - event_iplacebo),
+                     ncol=2, byrow=TRUE)
+colnames(iver_study) <- c("event", "no event")
+rownames(iver_study) <- c("ivermectin", "placebo")
+iver_study <- as.table(iver_study)
+
+iver_study %>% prop.test()
+
+t(iver_study["ivermectin",]) %>% prop.test()
+t(iver_study["placebo",]) %>% prop.test()
+
 ### Ivermectin Study
 
 num_iver <- 679
@@ -105,14 +125,92 @@ num_fplacebo <- 733
 event_fplacebo <- 109
 
 fluvox_study <- matrix(c(event_fluvox, num_fluvox - event_fluvox,
-                         event_fplacebonum_fplacebo - event_fplacebo),
+                         event_fplacebo, num_fplacebo - event_fplacebo),
                        ncol=2, byrow=TRUE)
-colnames(fluvox_study) <- c("no event", "event")
+colnames(fluvox_study) <- c("event", "no event")
 rownames(fluvox_study) <- c("fluvoxamine", "placebo")
 fluvox_study <- as.table(fluvox_study)
 
 fluvox_study %>% addmargins()
 fluvox_study %>% prop.table(1) %>% addmargins(2)
 
-fluvox_study %>% prop.test(correct = F)
+fluvox_study %>% prop.test(correct = F, alternative = "less")
+test <- fluvox_study %>% prop.test(correct = F, alternative = "less")
 
+### Exact Test
+
+sum(choose(679,111+(0:100))*choose(679,100-(0:100))/choose(1358,211))*2
+fisher.test(iver_study)$p
+
+## Chi sq independence
+
+library(gssr)
+
+num_vars <- c("age")
+cat_vars <- c("sex", "degree", "partyid", "race", "grass", "owngun", "gunlaw")
+my_vars <- c(num_vars, cat_vars)
+
+gss18 <- gss_get_yr(2018)
+data <- gss18
+data <- data %>% 
+  select(all_of(my_vars)) %>% 
+  mutate(
+    # Convert all missing to NA
+    across(everything(), haven::zap_missing),
+    # Make all categorical variables factors and relabel nicely
+    across(all_of(cat_vars), forcats::as_factor)
+  )
+
+# Now, recode "degree" to a binary variable, "college"
+
+data <- data %>% 
+  mutate(
+    college = recode(degree,
+                     "lt high school" = "no degree",
+                     "high school" = "no degree",
+                     "junior college" = "degree",
+                     "bachelor" = "degree",
+                     "graduate" = "degree"
+    )
+  )
+
+# and recode "partyid" to a simpler "party":
+
+data <- data %>% 
+  mutate(
+    party = recode(partyid,
+                   "strong democrat" = "DEM",
+                   "not str democrat" = "DEM",
+                   "ind,near dem" = "IND",
+                   "independent" = "IND",
+                   "ind,near rep" = "IND",
+                   "not str republican" = "REP",
+                   "strong republican" = "REP",
+                   "other party" = "OTH"
+    )
+  )
+
+
+table <- table(data$race, data$gunlaw)
+table %>% addmargins() 
+table %>% prop.table(1)
+chisq.test(table)
+chisq.test(table)$resid
+
+
+vaccines <- c(rep("AIAN",41462),
+              rep("Black",753863),
+              rep("Other",1191827),
+              rep("White",6826558))
+vacdata <- data.frame(vaccines)
+
+observed_gof_statistic <- vacdata %>%
+  specify(response = vaccines) %>%
+  hypothesize(null = "point",
+              p = c("AIAN" = 0.005,
+                    "Black" = 0.169,
+                    "Other" = 0.053,
+                    "White" = 0.773)) %>%
+  calculate(stat = "Chisq")
+
+  
