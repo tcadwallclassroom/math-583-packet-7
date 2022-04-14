@@ -445,7 +445,13 @@ event_fplacebo &lt;- 109</code></pre>
 </div>
 <div id="to-turn-in" class="section level2">
 <h2>To Turn In</h2>
-<p>You will turn in the results of the fluvoxamine study above, written as a “report” which presents the results to someone not in this class. I’ve included guidelines for your report below. For this report, you should include the results of a one-tailed hypothesis test based on randomization, and a bootstrapped 99% confidence interval.</p>
+<p>You will turn in the results of the fluvoxamine study above, written as a “report” which presents the results to someone not in this class. I’ve included guidelines for your report below. For this report, you should include the results of a one-tailed hypothesis test based on randomization, and a bootstrapped 99% confidence interval for the difference between the two proportions.</p>
+<p><strong>Important:</strong> For this report, set the following settings in your R Markdown file. The big change is <code>echo = F</code>. This will keep your R code from displaying, but the R output will still show up.</p>
+<pre class="r"><code>knitr::opts_chunk$set(echo = F, 
+                      cache = T, 
+                      eval = T, 
+                      cache.lazy = F, 
+                      warning = F)</code></pre>
 <div id="fluvoxamine-report-guidelines-based-on-the-monkey-report-guidelines-by-dr.-wynne" class="section level3">
 <h3>Fluvoxamine Report Guidelines (Based on the “Monkey Report Guidelines” by Dr. Wynne)</h3>
 <p>This report should have five clearly labeled sections. I don’t care what font or font size you use (just make it consistent) or how long the report is or anything like that. However, you do need to write each section in complete sentences and complete paragraphs. Treating this report like a set of questions on an in-class worksheet will not earn full credit.</p>
