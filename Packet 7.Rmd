@@ -332,7 +332,18 @@ fisher.test(iver_study, alternative = "two.sided")$p
 
 ## To Turn In
 
-You will turn in the results of the fluvoxamine study above, written as a "report" which presents the results to someone not in this class. I've included guidelines for your report below. For this report, you should include the results of a one-tailed hypothesis test based on randomization, and a bootstrapped 99% confidence interval.
+You will turn in the results of the fluvoxamine study above, written as a "report" which presents the results to someone not in this class. I've included guidelines for your report below. For this report, you should include the results of a one-tailed hypothesis test based on randomization, and a bootstrapped 99% confidence interval for the difference between the two proportions.
+
+
+**Important:** For this report, set the following settings in your R Markdown file. The big change is `echo = F`. This will keep your R code from displaying, but the R output will still show up.
+
+```{r options, eval = F}
+knitr::opts_chunk$set(echo = F, 
+                      cache = T, 
+                      eval = T, 
+                      cache.lazy = F, 
+                      warning = F)
+```
 
 ### Fluvoxamine Report Guidelines (Based on the "Monkey Report Guidelines" by Dr. Wynne)
 
