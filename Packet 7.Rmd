@@ -332,7 +332,59 @@ fisher.test(iver_study, alternative = "two.sided")$p
 
 ## To Turn In
 
-You will turn in the results of the fluvoxamine study above, written in such a way as to present the results to someone not in this class. That is, you should present the study with null and alternative hypotheses, the data that was collected, the statistic and p-value, and whether or not we reject the null hypothesis. You should calculate the p-value with a z-score, a second time with a randomization test, and finally, a third time using the hypergeometric exact test. In each case, the observed data is the same, we are only changing how we calculate the p-value.
+You will turn in the results of the fluvoxamine study above, written as a "report" which presents the results to someone not in this class. I've included guidelines for your report below. For this report, you should include the results of a one-tailed hypothesis test based on randomization, and a bootstrapped 99% confidence interval.
+
+### Fluvoxamine Report Guidelines (Based on the "Monkey Report Guidelines" by Dr. Wynne)
+
+This report should have five clearly labeled sections. I don’t care what font or font size you use (just make it consistent) or how long the report is or anything like that. However, you do need to write each section in complete sentences and complete paragraphs. Treating this report like a set of questions on an in-class worksheet will not earn full credit.
+
+Section 1: Introduction
+(This section covers Step 1: Ask a research question.)
+
+Provide some background context for the investigation. What is the general topic we are investigating, and why is it interesting or important?
+What is the research question in this investigation?
+
+Section 2: Methods
+(This section covers Step 2: Design a study and collect data.)
+
+What is an observational unit in this study? What variable are we recording about each observational unit? Is it categorical or quantitative?
+What is the population we are interested in?
+What is the parameter we are interested in? Use an appropriate mathematical symbol to represent it.
+What is your sample?
+
+Section 3: Data Exploration
+(This section covers Step 3: Explore the data.)
+
+In this section, you will provide summary tables and graphs to organize and visualize the data collected by the researchers. 
+
+
+Section 4: Statistical Inference
+(This section covers Step 4: Draw inferences beyond the data.) 
+
+The textbook highlights two main pillars of statistical inference to focus on this section: the strength of the evidence of an effect (significance) and the size of the effect (estimation).
+
+Tests of Significance: Identify the two competing explanations and identify which is the null vs. alternative hypothesis. Also write them mathematically in terms of the parameter identified in Section 1.
+
+Perform the first S in the 3S strategy: What is the (test) statistic we want to calculate from each observed or simulated sample? What is its value in the observed sample?
+
+Perform the second S in the 3S strategy: Explain how to create a null distribution model for the study assuming the null hypothesis is correct. 
+
+Perform the third S step in the 3S strategy: explain how to obtain the p-value for this test, and identify its value as calculated by R.
+
+How strong is your evidence against the null hypothesis and in favor of the alternative hypothesis? Include a graph showing the null distribution of the test statistic, the position of the observed test statistic, and highlighting the portion of the null distribution that is at least as extreme as the observed test statistic. Write 1-2 sentences to interpret the graph.
+
+Confidence Intervals: The confidence interval we constructed estimates the size of the effect. 
+
+What is a confidence interval?
+Explain in your own words how to obtain a confidence interval using the bootstrap. 
+Use R to find the 99% Confidence Interval for the test statistic based on the bootstrap. Include a graph showing the bootstrap distribution of the test statistic, highlighting the portion of the bootstrap that gives the confidence interval.
+
+Section 5: Conclusion and Discussion
+(This section covers Step 5: Formulate conclusions and Step 6: Look back and ahead.)
+
+Write a conclusion that answers your research question.
+Justify your conclusion based on the results of your test of significance.
+What are the plausible values of your parameter? Do you think there could be a "real world important" reduction in the proportion of hospitalization events using fluvoxamine as a COVID treatment?
 
 
 
