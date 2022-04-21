@@ -140,77 +140,33 @@ test <- fluvox_study %>% prop.test(correct = F, alternative = "less")
 ### Exact Test
 
 sum(choose(679,111+(0:100))*choose(679,100-(0:100))/choose(1358,211))*2
-fisher.test(iver_study)$p
+fisher.test(fluvox_study, alternative = "less")
+(100/679)/(111/679)
+iver_study
 
-## Chi sq independence
+fluv_groups <- c(rep("ivermectin", num_fluvox), 
+                 rep("placebo", num_fplacebo))
+fluv_results <- c(rep("event", event_fluvox),
+                  rep("no event", num_fluvox - event_fluvox),
+                  rep("event", event_fplacebo),
+                  rep("no event", num_fplacebo - event_fplacebo))
+fluv_data <- data.frame("groups" = fluv_groups,
+                        "results" = fluv_results)
 
-library(gssr)
+fluv_ratio_props <- fluv_data %>% 
+  specify(results ~ groups, success = "event") %>%
+  calculate(stat = "ratio of props")
 
-num_vars <- c("age")
-cat_vars <- c("sex", "degree", "partyid", "race", "grass", "owngun", "gunlaw")
-my_vars <- c(num_vars, cat_vars)
+fluv_null_dist <- fluv_data %>% 
+  specify(results ~ groups, success = "event") %>%
+  hypothesize(null = "independence") %>% 
+  generate(reps = 100000, type = "permute") %>% 
+  calculate(stat = "ratio of props")
 
-gss18 <- gss_get_yr(2018)
-data <- gss18
-data <- data %>% 
-  select(all_of(my_vars)) %>% 
-  mutate(
-    # Convert all missing to NA
-    across(everything(), haven::zap_missing),
-    # Make all categorical variables factors and relabel nicely
-    across(all_of(cat_vars), forcats::as_factor)
-  )
-
-# Now, recode "degree" to a binary variable, "college"
-
-data <- data %>% 
-  mutate(
-    college = recode(degree,
-                     "lt high school" = "no degree",
-                     "high school" = "no degree",
-                     "junior college" = "degree",
-                     "bachelor" = "degree",
-                     "graduate" = "degree"
-    )
-  )
-
-# and recode "partyid" to a simpler "party":
-
-data <- data %>% 
-  mutate(
-    party = recode(partyid,
-                   "strong democrat" = "DEM",
-                   "not str democrat" = "DEM",
-                   "ind,near dem" = "IND",
-                   "independent" = "IND",
-                   "ind,near rep" = "IND",
-                   "not str republican" = "REP",
-                   "strong republican" = "REP",
-                   "other party" = "OTH"
-    )
-  )
+fluv_null_dist %>%
+  get_p_value(obs_stat = fluv_ratio_props, direction = "less")
+  
 
 
-table <- table(data$race, data$gunlaw)
-table %>% addmargins() 
-table %>% prop.table(1)
-chisq.test(table)
-chisq.test(table)$resid
-
-
-vaccines <- c(rep("AIAN",41462),
-              rep("Black",753863),
-              rep("Other",1191827),
-              rep("White",6826558))
-vacdata <- data.frame(vaccines)
-
-observed_gof_statistic <- vacdata %>%
-  specify(response = vaccines) %>%
-  hypothesize(null = "point",
-              p = c("AIAN" = 0.005,
-                    "Black" = 0.169,
-                    "Other" = 0.053,
-                    "White" = 0.773)) %>%
-  calculate(stat = "Chisq")
 
   
